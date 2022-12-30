@@ -1,10 +1,11 @@
 import PySimpleGUI as sg
 import yt_dlp
 from yt_dlp import YoutubeDL
+import os
 
 URLS = []
 URL_set = set()
-info = ""
+song_info = ""
 
 waitingforConfirmation = False
 ydl = yt_dlp.YoutubeDL({})
@@ -18,8 +19,7 @@ layout = [
             # 2 ==========================================================================================================================================
             [
                 sg.Input(key='-INPUT-', text_color="Black", background_color="#cbcee6"),
-                sg.Button('Add Song', key="-ADD SONG-", button_color=("Black","White")),
-                sg.Button('Quit', button_color=("Black","White"))
+                sg.Button('Add Song', key="-ADD SONG-", button_color=("Black","White"))
             ],
             # 3 ==========================================================================================================================================
             [
@@ -28,10 +28,17 @@ layout = [
             # 4 ==========================================================================================================================================
             [
                 sg.Push(background_color="White"),
+                sg.Button('Yes', key="-CONFIRM SONG-", button_color=("#282930","#a5d6a3"), visible=False),
+                sg.Push(background_color="White")
+            ],
+
+            # 5 ==========================================================================================================================================
+            [
+                sg.Push(background_color="White"),
                 sg.Multiline(key='-DOWNLOAD LIST-', auto_size_text=True, auto_refresh=True, expand_y=True, size = (60,10)),
                 sg.Push(background_color="White")
             ],
-            # 5 ==========================================================================================================================================
+            # 6 ==========================================================================================================================================
             [
                 sg.Push(background_color="White"),
                 sg.Button('Download 0 songs', key='-NUM SONGS-', button_color=("Black","White")),
@@ -52,39 +59,42 @@ while True:
         break
 
     # Check if the input is populated
-    # populated = len(values['-INPUT-']) > 0
+    populated = len(values['-INPUT-']) > 0
 
     # Error Checking
-    # if event == '-ADD SONG-' and (not populated):
-    #     window['-NOTIFICATION-'].Update('Invalid Input', text_color="Red")
+    if event == '-ADD SONG-' and (not populated):
+        window['-NOTIFICATION-'].Update('Invalid Input', text_color="Red")
 
     #  See if user wants to add a song
     if event == '-ADD SONG-' and not waitingforConfirmation:
         try:
-            info = ydl.sanitize_info(ydl.extract_info(url = values['-INPUT-'], download=False))
-            window['-NOTIFICATION-'].update("Is this the song you are trying to download \n" + info["title"] + " by Uploader " + info["uploader"], text_color="Black")
-            window['-ADD SONG-'].update("Yes", button_color=("#282930","#a5d6a3"))
+            song_info = ydl.sanitize_info(ydl.extract_info(url = values['-INPUT-'], download=False))
+            window['-NOTIFICATION-'].update("Is this the song you are trying to download \n" + song_info["title"] + " by Uploader " + song_info["uploader"], text_color="Black")
+            #window['-ADD SONG-'].update("Yes", button_color=("#282930","#a5d6a3"))
+            window['-ADD SONG-'].update(visible=False)
+            window["-CONFIRM SONG-"].update(visible=True)
             waitingforConfirmation = True
-        except yt_dlp.utils.DownloadError:
-            window['-NOTIFICATION-'].Update('Not a valid URL. The input is Empty')
+        except:
+            window['-NOTIFICATION-'].Update('Something went wrong. \n Check the internet or the URL and try again later.')
             
 
     # Confirm if the correct song has been selected
-    elif event == '-ADD SONG-' and waitingforConfirmation:
-        if(info["id"] in URL_set):
+    elif event == '-CONFIRM SONG-' and waitingforConfirmation:
+        if(song_info["id"] in URL_set):
             window['-NOTIFICATION-'].update("The song is already added to download.")
         else:
-            URL_set.add(info["id"])
+            URL_set.add(song_info["id"])
             URLS.append(values['-INPUT-'])
             waitingforConfirmation = False
             
             window['-NUM SONGS-'].update("Download " + str(len(URLS)) + " songs")
             window['-NOTIFICATION-'].update('The song has been added to the download list.')
-            window['-DOWNLOAD LIST-'].update(str(len(URLS))+ ". " + info["title"].upper() + "\n", append=True)
+            window['-DOWNLOAD LIST-'].update(str(len(URLS))+ ". " + song_info["title"].upper() + "\n", append=True)
             window['-INPUT-'].update("")
         
         # Update the button
-        window['-ADD SONG-'].update("Add Song", button_color=("Black","White"))
+        window['-ADD SONG-'].update(visible=True)
+        window["-CONFIRM SONG-"].update(visible=False)
     
     if event == "-NUM SONGS-":
 
@@ -103,7 +113,11 @@ while True:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download(URLS)
         
-        break
+        for directory_Element in os.listdir(r"./"):
+            if directory_Element.endswith(".m4a"):
+                oldName = directory_Element
+                newName = directory_Element.split("[")[0].split("(")[0].strip() + ".m4a"
+                os.rename(oldName,newName)        
 
 # Finish up by removing from the screen
 window.close()

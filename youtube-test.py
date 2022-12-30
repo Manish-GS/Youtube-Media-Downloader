@@ -1,14 +1,11 @@
-import yt_dlp
-import json
+import os  
 
-URL = "https://www.youtube.com/watch?v=uynKueSBZm0"
-
-ydl_opts = {}
-with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-    info = ydl.extract_info(URL, download=False)
-
-    print(ydl.sanitize_info(info)["title"])
-
-    # # ℹ️ ydl.sanitize_info makes the info json-serializable
-    # with open("example.json", "w") as write_file:
-    #     json.dump(ydl.sanitize_info(info), write_file, indent=4)
+for directory_Element in os.listdir(r"./"):
+    if directory_Element.endswith(".m4a"):
+        oldName = directory_Element
+        #newName = directory_Element.split("[")[0].strip() + ".m4a"
+        #newName = directory_Element.split("(")[0].strip() + ".m4a"
+        #os.rename(oldName,newName)
+        #print(oldName, "\n", newName,  "\n")
+        newName = directory_Element.split("[")[0].split("(")[0].strip() + ".m4a"
+#os.rename('guru99.txt','career.guru99.txt')
