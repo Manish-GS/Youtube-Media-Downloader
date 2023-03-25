@@ -1,14 +1,15 @@
 import PySimpleGUI as sg
 import yt_dlp
-from yt_dlp import YoutubeDL
 import os
 
 URLS = []
-URL_set = set()
+URL_dict = dict()
 song_info = ""
 
+# Determines whether correct song has been inputted
 waitingforConfirmation = False
 ydl = yt_dlp.YoutubeDL({})
+right_click_menu = ['', ['Paste', 'Select All', 'Cut']]
 
 # Define the window's contents
 layout = [
@@ -19,6 +20,8 @@ layout = [
             # 2 ==========================================================================================================================================
             [
                 sg.Input(key='-INPUT-', text_color="Black", background_color="#cbcee6"),
+                sg.Radio("Video", group_id= "Media Type", key="-MEDIA VIDEO-", default=True, text_color="Black", background_color="White"),
+                sg.Radio("Audio", group_id= "Media Type", key="-MEDIA AUDIO-", text_color="Black", background_color="White"),
                 sg.Button('Add Song', key="-ADD SONG-", button_color=("Black","White"))
             ],
             # 3 ==========================================================================================================================================
@@ -29,6 +32,7 @@ layout = [
             [
                 sg.Push(background_color="White"),
                 sg.Button('Yes', key="-CONFIRM SONG-", button_color=("#282930","#a5d6a3"), visible=False),
+                sg.Button('No', key="-REJECT SONG-", button_color=("#282930","#f94449"), visible=False),
                 sg.Push(background_color="White")
             ],
 
@@ -68,23 +72,37 @@ while True:
     #  See if user wants to add a song
     if event == '-ADD SONG-' and not waitingforConfirmation:
         try:
+            # Get info of the input URL and display info to the user to confirm the correct song has been chosen
             song_info = ydl.sanitize_info(ydl.extract_info(url = values['-INPUT-'], download=False))
-            window['-NOTIFICATION-'].update("Is this the song you are trying to download \n" + song_info["title"] + " by Uploader " + song_info["uploader"], text_color="Black")
-            #window['-ADD SONG-'].update("Yes", button_color=("#282930","#a5d6a3"))
+            window['-NOTIFICATION-'].update("You are trying to download the vedio/audio(s):\n" + song_info["title"] + " by Uploader " + song_info["uploader"], text_color="Black")
             window['-ADD SONG-'].update(visible=False)
             window["-CONFIRM SONG-"].update(visible=True)
+            window["-REJECT SONG-"].update(visible=True)
             waitingforConfirmation = True
-        except:
-            window['-NOTIFICATION-'].Update('Something went wrong. \n Check the internet or the URL and try again later.')
-            
+        except Exception as e:
+            window['-NOTIFICATION-'].Update("Error. Check the input")
+    
+    elif event == '-REJECT SONG-' and waitingforConfirmation:
+        # Finish Confirmation
+        waitingforConfirmation = False
+
+        # Update the window
+        window['-INPUT-'].update("")
+        window['-NOTIFICATION-'].update("")
+        window['-ADD SONG-'].update(visible=True)
+        window["-CONFIRM SONG-"].update(visible=False)
+        window["-REJECT SONG-"].update(visible=False)
+
 
     # Confirm if the correct song has been selected
     elif event == '-CONFIRM SONG-' and waitingforConfirmation:
-        if(song_info["id"] in URL_set):
+        # Check if the song has already been added to the download list
+        if(song_info["id"] in URL_dict):
             window['-NOTIFICATION-'].update("The song is already added to download.")
         else:
-            URL_set.add(song_info["id"])
-            URLS.append(values['-INPUT-'])
+            # Store the song to download
+            URL_dict[song_info["id"]] =  song_info["title"]
+            URLS.append((values['-INPUT-'], window["-MEDIA AUDIO-"].get()))
             waitingforConfirmation = False
             
             window['-NUM SONGS-'].update("Download " + str(len(URLS)) + " songs")
@@ -95,29 +113,58 @@ while True:
         # Update the button
         window['-ADD SONG-'].update(visible=True)
         window["-CONFIRM SONG-"].update(visible=False)
+        window["-REJECT SONG-"].update(visible=False)
     
     if event == "-NUM SONGS-":
 
         window['-NOTIFICATION-'].update('Starting Download')
         window.refresh()
-        
-        ydl_opts = {
-            'format': 'm4a/bestaudio/best',
-            # ℹ️ See help(yt_dlp.postprocessor) for a list of available Postprocessors and their arguments
-            'postprocessors': [{  # Extract audio using ffmpeg
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'm4a',
-            }]
-        }
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download(URLS)
+        for songURL in URLS:
+
+            ydl_opts = {}
+
+            if songURL[1]:
+                ydl_opts = {
+                    'format': 'm4a/bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'm4a',
+                    }]
+                }
+
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download(songURL[0])
         
-        for directory_Element in os.listdir(r"./"):
-            if directory_Element.endswith(".m4a"):
-                oldName = directory_Element
-                newName = directory_Element.split("[")[0].split("(")[0].strip() + ".m4a"
-                os.rename(oldName,newName)        
+
 
 # Finish up by removing from the screen
 window.close()
+
+for directory_Element in os.listdir(r"./"):
+
+    # Store the possible location / index of the possible id
+    idLocation1 = directory_Element.rfind("[")
+
+    # Check if the possible id exists
+    if idLocation1 > 0 :
+
+        # Store the ending location / index of the possible id
+        idLocation2 = directory_Element.rfind("]")
+
+        # Store the possible id
+        id = directory_Element[idLocation1 + 1 : idLocation2]
+
+        # Check if the id exists in the URL dictonary
+        exists = id in URL_dict.keys()
+
+        # Rename is exists
+        if exists:
+
+            # Name to replace by removing the brackets
+            newName = directory_Element[ : idLocation1].strip()
+
+            # Extension of the media
+            extension = directory_Element[directory_Element.rfind("."): ]
+            
+            os.rename(directory_Element, newName + extension)

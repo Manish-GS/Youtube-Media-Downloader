@@ -42,7 +42,7 @@ def make_window(theme=None):
                 [name('Combo'), sg.Combo(sg.theme_list(), default_value=sg.theme(), s=(15,22), enable_events=True, readonly=True, k='-COMBO-')],
                 [name('OptionMenu'), sg.OptionMenu(['OptionMenu',],s=(15,2))],
                 [name('Checkbox'), sg.Checkbox('Checkbox')],
-                [name('Radio'), sg.Radio('Radio', 1)],
+                [name('Radio'), sg.Radio('Radio', 2)],
                 [name('Spin'), sg.Spin(['Spin',], s=(15,2))],
                 [name('Button'), sg.Button('Button')],
                 [name('ButtonMenu'), sg.ButtonMenu('ButtonMenu', sg.MENU_RIGHT_CLICK_EDITME_EXIT)],
